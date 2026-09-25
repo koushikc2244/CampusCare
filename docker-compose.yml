@@ -1,0 +1,19 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: campuscare-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: campuscare
+      POSTGRES_PASSWORD: campuscare_dev
+      POSTGRES_DB: campuscare
+
+    ports:
+      - "5433:5432"
+
+    volumes:
+      - campuscare_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  campuscare_postgres_data:
