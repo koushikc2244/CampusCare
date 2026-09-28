@@ -811,6 +811,26 @@ def get_admin_stats(
             Incident.priority == "high"
         ).count()
 
+        categories = [
+            "safety",
+            "electrical",
+            "water",
+            "infrastructure",
+            "cleanliness",
+            "security",
+            "network",
+            "hostel",
+            "classroom",
+            "other"
+        ]
+
+        by_category = {}
+
+        for category in categories:
+            by_category[category] = session.query(Incident).filter(
+                Incident.category == category
+            ).count()
+
         return {
             "total_incidents": total,
 
@@ -826,9 +846,10 @@ def get_admin_stats(
             "by_priority": {
                 "critical": critical,
                 "high": high
-            }
-        }
+            },
 
+            "by_category": by_category
+        }
 
 # ============================================================
 # INCIDENT STATUS HISTORY

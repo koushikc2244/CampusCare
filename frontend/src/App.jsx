@@ -2050,6 +2050,50 @@ const fetchPublicIncidents = async () => {
             />
           </section>
 
+          <section className="mt-10">
+  <div className="mb-6">
+    <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#71856F]">
+      Overview
+    </p>
+
+    <h3 className="mt-2 text-2xl font-semibold">
+      Incidents by category
+    </h3>
+
+    <p className="mt-2 text-sm text-[#777A72] dark:text-[#AEB9B1]">
+      Distribution of reported campus incidents across different categories.
+    </p>
+  </div>
+
+  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+    {[
+      ["Safety", "safety"],
+      ["Electrical", "electrical"],
+      ["Water", "water"],
+      ["Infrastructure", "infrastructure"],
+      ["Cleanliness", "cleanliness"],
+      ["Security", "security"],
+      ["Network", "network"],
+      ["Hostel", "hostel"],
+      ["Classroom", "classroom"],
+      ["Other", "other"],
+    ].map(([label, key]) => (
+      <div
+        key={key}
+        className="rounded-[24px] border border-[#E5DED2] bg-[#FFFDFA] p-5 dark:border-[#304238] dark:bg-[#202D25]"
+      >
+        <p className="text-sm text-[#777A72] dark:text-[#AEB9B1]">
+          {label}
+        </p>
+
+        <p className="mt-3 text-3xl font-semibold">
+          {adminStats?.by_category?.[key] ?? 0}
+        </p>
+      </div>
+    ))}
+  </div>
+</section>
+
 
           <section className="mt-10">
 
