@@ -352,6 +352,8 @@ function App() {
   const [adminStats, setAdminStats] =
     useState(null)
 
+  const [monthlyStats, setMonthlyStats] = useState([])
+
   const [loadingAdmin, setLoadingAdmin] =
     useState(false)
 
@@ -728,6 +730,7 @@ const fetchPublicIncidents = async () => {
       const [
         incidentsResponse,
         statsResponse,
+        monthlyResponse,
         staffResponse,
       ] = await Promise.all([
 
@@ -740,6 +743,13 @@ const fetchPublicIncidents = async () => {
 
         fetch(
           "http://127.0.0.1:8000/admin/stats",
+          {
+            headers,
+          }
+        ),
+
+        fetch(
+          "http://127.0.0.1:8000/admin/stats/monthly",
           {
             headers,
           }
@@ -781,6 +791,11 @@ const fetchPublicIncidents = async () => {
         setAdminStats(stats)
       }
 
+      if (monthlyResponse.ok) {
+  const monthly = await monthlyResponse.json()
+
+  setMonthlyStats(monthly.monthly_incidents ?? [])
+}
 
       if (staffResponse.ok) {
 
@@ -2094,6 +2109,69 @@ const fetchPublicIncidents = async () => {
   </div>
 </section>
 
+<section className="mt-10">
+  <div className="mb-6">
+    <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#71856F]">
+      Trends
+    </p>
+
+    <h3 className="mt-2 text-2xl font-semibold">
+      Monthly incident trend
+    </h3>
+
+    <p className="mt-2 text-sm text-[#777A72] dark:text-[#AEB9B1]">
+      Number of campus incidents reported each month.
+    </p>
+  </div>
+
+  <div className="rounded-[24px] border border-[#E5DED2] bg-[#FFFDFA] p-6 dark:border-[#304238] dark:bg-[#202D25]">
+    {monthlyStats.length === 0 ? (
+      <p className="text-sm text-[#777A72] dark:text-[#AEB9B1]">
+        No monthly incident data available.
+      </p>
+    ) : (
+      <div className="space-y-5">
+        {monthlyStats.map((item) => (
+          <div key={item.month}>
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-sm font-medium">
+                {new Date(`${item.month}-01`).toLocaleDateString(
+                  "en-US",
+                  {
+                    month: "long",
+                    year: "numeric",
+                  }
+                )}
+              </span>
+
+              <span className="text-sm font-semibold text-[#71856F] dark:text-[#AEB9B1]">
+                {item.count}
+              </span>
+            </div>
+
+            <div className="h-3 overflow-hidden rounded-full bg-[#EDE7DC] dark:bg-[#304238]">
+              <div
+                className="h-full rounded-full bg-[#71856F]"
+                style={{
+                  width: `${Math.max(
+                    8,
+                    (item.count /
+                      Math.max(
+                        ...monthlyStats.map(
+                          (month) => month.count
+                        )
+                      )) *
+                      100
+                  )}%`,
+                }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+</section>
 
           <section className="mt-10">
 

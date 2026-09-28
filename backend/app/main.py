@@ -850,7 +850,37 @@ def get_admin_stats(
 
             "by_category": by_category
         }
+@app.get("/admin/stats/monthly")
+def get_monthly_incident_stats(
+    current_user: dict = Depends(require_role("admin"))
+):
+    with Session(engine) as session:
 
+        incidents = (
+            session.query(Incident)
+            .order_by(Incident.created_at)
+            .all()
+        )
+
+        monthly_counts = {}
+
+        for incident in incidents:
+            month = incident.created_at.strftime("%Y-%m")
+
+            if month not in monthly_counts:
+                monthly_counts[month] = 0
+
+            monthly_counts[month] += 1
+
+        return {
+            "monthly_incidents": [
+                {
+                    "month": month,
+                    "count": count
+                }
+                for month, count in monthly_counts.items()
+            ]
+        }
 # ============================================================
 # INCIDENT STATUS HISTORY
 # ============================================================
