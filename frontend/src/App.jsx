@@ -1988,84 +1988,61 @@ const fetchPublicIncidents = async () => {
           )}
 
 
-          <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+  <div className="rounded-[24px] border border-[#E5DED2] bg-[#FFFDF8] p-6 dark:border-[#304238] dark:bg-[#202D25]">
+    <p className="text-sm text-[#777A72] dark:text-[#AEB9B1]">
+      Total incidents
+    </p>
+    <p className="mt-3 text-4xl font-semibold">
+      {adminStats?.total_incidents ?? adminIncidents.length}
+    </p>
+  </div>
 
-            <div className="rounded-[24px] border border-[#E5DED2] bg-[#FFFDF8] p-6 dark:border-[#304238] dark:bg-[#202D25]">
+  <div className="rounded-[24px] border border-[#E5DED2] bg-[#FFFDF8] p-6 dark:border-[#304238] dark:bg-[#202D25]">
+    <p className="text-sm text-[#777A72] dark:text-[#AEB9B1]">
+      Reported
+    </p>
+    <p className="mt-3 text-4xl font-semibold">
+      {adminStats?.by_status?.reported ?? 0}
+    </p>
+  </div>
 
-              <p className="text-sm text-[#777A72] dark:text-[#AEB9B1]">
-                Total incidents
-              </p>
+  <div className="rounded-[24px] border border-[#E5DED2] bg-[#FFFDF8] p-6 dark:border-[#304238] dark:bg-[#202D25]">
+    <p className="text-sm text-[#777A72] dark:text-[#AEB9B1]">
+      In progress
+    </p>
+    <p className="mt-3 text-4xl font-semibold">
+      {adminStats?.by_status?.in_progress ?? 0}
+    </p>
+  </div>
 
-              <p className="mt-3 text-4xl font-semibold">
-                {adminStats?.total ??
-                  adminIncidents.length}
-              </p>
+  <div className="rounded-[24px] border border-[#E5DED2] bg-[#FFFDF8] p-6 dark:border-[#304238] dark:bg-[#202D25]">
+    <p className="text-sm text-[#777A72] dark:text-[#AEB9B1]">
+      Resolved
+    </p>
+    <p className="mt-3 text-4xl font-semibold">
+      {adminStats?.by_status?.resolved ?? 0}
+    </p>
+  </div>
 
-            </div>
+  <div className="rounded-[24px] border border-[#E5DED2] bg-[#FFFDF8] p-6 dark:border-[#304238] dark:bg-[#202D25]">
+    <p className="text-sm text-[#777A72] dark:text-[#AEB9B1]">
+      Closed
+    </p>
+    <p className="mt-3 text-4xl font-semibold">
+      {adminStats?.by_status?.closed ?? 0}
+    </p>
+  </div>
 
-
-            <div className="rounded-[24px] border border-[#E5DED2] bg-[#FFFDF8] p-6 dark:border-[#304238] dark:bg-[#202D25]">
-
-              <p className="text-sm text-[#777A72] dark:text-[#AEB9B1]">
-                Reported
-              </p>
-
-              <p className="mt-3 text-4xl font-semibold">
-                {
-                  adminIncidents.filter(
-                    (i) =>
-                      i.status ===
-                      "reported"
-                  ).length
-                }
-              </p>
-
-            </div>
-
-
-            <div className="rounded-[24px] border border-[#E5DED2] bg-[#FFFDF8] p-6 dark:border-[#304238] dark:bg-[#202D25]">
-
-              <p className="text-sm text-[#777A72] dark:text-[#AEB9B1]">
-                In progress
-              </p>
-
-              <p className="mt-3 text-4xl font-semibold">
-                {
-                  adminIncidents.filter(
-                    (i) =>
-                      i.status ===
-                        "assigned" ||
-                      i.status ===
-                        "in_progress"
-                  ).length
-                }
-              </p>
-
-            </div>
-
-
-            <div className="rounded-[24px] border border-[#E5DED2] bg-[#FFFDF8] p-6 dark:border-[#304238] dark:bg-[#202D25]">
-
-              <p className="text-sm text-[#777A72] dark:text-[#AEB9B1]">
-                Resolved
-              </p>
-
-              <p className="mt-3 text-4xl font-semibold">
-                {
-                  adminIncidents.filter(
-                    (i) =>
-                      i.status ===
-                        "resolved" ||
-                      i.status ===
-                        "closed"
-                  ).length
-                }
-              </p>
-
-            </div>
-
-          </section>
-
+  <div className="rounded-[24px] border border-[#E5DED2] bg-[#FFFDF8] p-6 dark:border-[#304238] dark:bg-[#202D25]">
+    <p className="text-sm text-[#777A72] dark:text-[#AEB9B1]">
+      High priority
+    </p>
+    <p className="mt-3 text-4xl font-semibold">
+      {adminStats?.by_priority?.high ?? 0}
+    </p>
+  </div>
+</section>
 
           <section className="mt-10">
             <AdminIncidentMap
