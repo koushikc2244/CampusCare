@@ -2,7 +2,7 @@ from .services.priority_service import calculate_priority
 from .services.status_service import can_change_status
 
 from .auth import create_access_token
-from fastapi import Depends, FastAPI, Form, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -15,7 +15,14 @@ from .models.incident import Incident
 from .models.status_history import IncidentStatusHistory
 from .models.comment import IncidentComment
 
-from .schemas import CommentCreate, IncidentCreate, UserCreate
+from .schemas import (
+    AssignIncidentRequest,
+    CommentCreate,
+    IncidentCreate,
+    LoginRequest,
+    StatusUpdateRequest,
+    UserCreate,
+)
 from .security import hash_password, verify_password
 
 
@@ -23,7 +30,6 @@ app = FastAPI(title="CampusCare API")
 
 
 # Create database tables
-Base.metadata.create_all(bind=engine)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -105,18 +111,14 @@ def create_user(user: UserCreate):
 # ============================================================
 
 @app.post("/login")
-def login(
-    email: str = Form(...),
-    password: str = Form(...)
-):
+def login(login_data: LoginRequest):
     with Session(engine) as session:
-
         user = session.query(User).filter(
-            User.email == email
+            User.email == login_data.email
         ).first()
 
         if not user or not verify_password(
-            password,
+            login_data.password,
             user.password_hash
         ):
             raise HTTPException(
@@ -138,7 +140,6 @@ def login(
             "email": user.email,
             "role": user.role
         }
-
 
 # ============================================================
 # CURRENT USER
@@ -258,6 +259,57 @@ def get_my_incidents(
             ]
         }
 
+# ============================================================
+# CAMPUS - INCIDENT FEED
+# ============================================================
+
+@app.get("/incidents/public")
+def get_public_incidents(
+    current_user: dict = Depends(get_current_user)
+):
+    with Session(engine) as session:
+
+        incidents = (
+            session.query(Incident)
+            .filter(Incident.status != "rejected")
+            .order_by(Incident.created_at.desc())
+            .all()
+        )
+
+        return {
+            "count": len(incidents),
+            "incidents": [
+                {
+                    "id": incident.id,
+                    "title": incident.title,
+                    "description": incident.description,
+                    "category": incident.category,
+                    "priority": incident.priority,
+                    "status": incident.status,
+                    "location": incident.location,
+                    "latitude": incident.latitude,
+                    "longitude": incident.longitude,
+
+                    "reported_by": {
+                        "id": incident.reporter.id,
+                        "name": incident.reporter.name
+                    },
+
+                    "assigned_to": (
+                        {
+                            "id": incident.assigned_staff.id,
+                            "name": incident.assigned_staff.name
+                        }
+                        if incident.assigned_staff
+                        else None
+                    ),
+
+                    "created_at": incident.created_at,
+                    "updated_at": incident.updated_at
+                }
+                for incident in incidents
+            ]
+        }
 
 # ============================================================
 # ADMIN - ALL INCIDENTS
@@ -331,6 +383,8 @@ def get_staff_members(
             for staff in staff_members
         ]
 
+
+
 # ============================================================
 # ADMIN - UPDATE INCIDENT STATUS
 # ============================================================
@@ -338,7 +392,7 @@ def get_staff_members(
 @app.patch("/admin/incidents/{incident_id}/status")
 def update_incident_status(
     incident_id: int,
-    status: str,
+    status_data: StatusUpdateRequest,
     current_user: dict = Depends(require_role("admin"))
 ):
     with Session(engine) as session:
@@ -356,23 +410,23 @@ def update_incident_status(
         # Check whether this status transition is allowed
         if not can_change_status(
             incident.status,
-            status
+            status_data.status
         ):
             raise HTTPException(
                 status_code=400,
                 detail=(
                     f"Cannot change status from "
-                    f"{incident.status} to {status}"
+                    f"{incident.status} to {status_data.status}"
                 )
             )
 
-        incident.status = status
+        incident.status = status_data.status
 
         # Record status history
         history = IncidentStatusHistory(
             incident_id=incident.id,
             changed_by=current_user["user_id"],
-            status=status
+            status=status_data.status
         )
 
         session.add(history)
@@ -393,12 +447,11 @@ def update_incident_status(
 @app.patch("/admin/incidents/{incident_id}/assign")
 def assign_incident(
     incident_id: int,
-    staff_id: int,
+    assignment_data: AssignIncidentRequest,
     current_user: dict = Depends(require_role("admin"))
 ):
     with Session(engine) as session:
 
-        # Find incident
         incident = session.query(Incident).filter(
             Incident.id == incident_id
         ).first()
@@ -409,9 +462,16 @@ def assign_incident(
                 detail="Incident not found"
             )
 
-        # Find staff user
+        # Completed incidents cannot be assigned
+        if incident.status in ["resolved", "closed", "rejected"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot assign a completed incident"
+            )
+
+        # Find the selected staff member
         staff = session.query(User).filter(
-            User.id == staff_id
+            User.id == assignment_data.staff_id
         ).first()
 
         if not staff:
@@ -420,27 +480,25 @@ def assign_incident(
                 detail="Staff user not found"
             )
 
-        # Make sure selected user is staff
+        # Make sure the selected user is actually staff
         if staff.role != "staff":
             raise HTTPException(
                 status_code=400,
                 detail="User is not a staff member"
             )
 
-        # Do not allow assignment of incidents that are already finished.
-        if incident.status in ["resolved", "closed", "rejected"]:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Cannot assign an incident with status {incident.status}"
-            )
+        # Check whether this is a new assignment
+        is_new_assignment = (
+            incident.assigned_to != staff.id
+        )
 
-        # Assign incident.
+        # Assign the incident
         incident.assigned_to = staff.id
 
-        # Only create an "assigned" history entry when the incident
-        # actually enters the assigned state. This prevents duplicate
-        # Assigned entries when the same assignment is submitted again.
-        if incident.status != "assigned":
+        # If the incident is reported or under review,
+        # move it into the assigned state.
+        if incident.status in ["reported", "under_review"]:
+
             incident.status = "assigned"
 
             history = IncidentStatusHistory(
@@ -455,12 +513,15 @@ def assign_incident(
         session.refresh(incident)
 
         return {
-            "message": "Incident assigned successfully",
+            "message": (
+                "Incident assigned successfully"
+                if is_new_assignment
+                else "Incident is already assigned to this staff member"
+            ),
             "incident_id": incident.id,
             "assigned_to": incident.assigned_to,
             "status": incident.status
         }
-
 
 # ============================================================
 # STAFF - MY ASSIGNED INCIDENTS
@@ -521,7 +582,7 @@ def get_staff_incidents(
 @app.patch("/staff/incidents/{incident_id}/status")
 def staff_update_incident_status(
     incident_id: int,
-    status: str,
+    status_data: StatusUpdateRequest,
     current_user: dict = Depends(require_role("staff"))
 ):
     with Session(engine) as session:
@@ -546,23 +607,23 @@ def staff_update_incident_status(
         # Check whether status transition is allowed
         if not can_change_status(
             incident.status,
-            status
+            status_data.status
         ):
             raise HTTPException(
                 status_code=400,
                 detail=(
                     f"Cannot change status from "
-                    f"{incident.status} to {status}"
+                    f"{incident.status} to {status_data.status}"
                 )
             )
 
-        incident.status = status
+        incident.status = status_data.status
 
         # Record status history
         history = IncidentStatusHistory(
             incident_id=incident.id,
             changed_by=current_user["user_id"],
-            status=status
+            status=status_data.status
         )
 
         session.add(history)
@@ -641,7 +702,6 @@ def add_incident_comment(
             "created_at": new_comment.created_at
         }
 
-
 # ============================================================
 # GET INCIDENT COMMENTS
 # ============================================================
@@ -663,6 +723,30 @@ def get_incident_comments(
                 detail="Incident not found"
             )
 
+        # Check whether the user is allowed to view comments
+        is_admin = current_user["role"] == "admin"
+
+        is_reporter = (
+            incident.reported_by == current_user["user_id"]
+        )
+
+        is_assigned_staff = (
+            incident.assigned_to == current_user["user_id"]
+        )
+
+        if not (
+            is_admin
+            or is_reporter
+            or is_assigned_staff
+        ):
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "You do not have permission "
+                    "to view comments on this incident"
+                )
+            )
+
         comments = session.query(IncidentComment).filter(
             IncidentComment.incident_id == incident_id
         ).order_by(
@@ -682,7 +766,6 @@ def get_incident_comments(
                 for comment in comments
             ]
         }
-
 
 # ============================================================
 # ADMIN - DASHBOARD STATISTICS
@@ -790,24 +873,3 @@ def get_incident_history(
                 for item in history
             ]
         }
-@app.get("/admin/staff")
-def get_staff_members(
-    current_user: dict = Depends(require_role("admin"))
-):
-    with Session(engine) as session:
-        staff_members = (
-            session.query(User)
-            .filter(User.role == "staff")
-            .order_by(User.name)
-            .all()
-        )
-
-        return [
-            {
-                "id": staff.id,
-                "name": staff.name,
-                "email": staff.email,
-                "role": staff.role
-            }
-            for staff in staff_members
-        ]

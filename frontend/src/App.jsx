@@ -321,6 +321,7 @@ function App() {
   // ==========================================================
 
   const [incidents, setIncidents] = useState([])
+  const [publicIncidents, setPublicIncidents] = useState([])
   const [loadingIncidents, setLoadingIncidents] = useState(false)
 
 
@@ -359,6 +360,8 @@ function App() {
 
   const [adminFilter, setAdminFilter] =
     useState("all")
+
+  const [adminSearch, setAdminSearch] = useState("")
 
 
   // ==========================================================
@@ -550,20 +553,21 @@ function App() {
         "password",
         loginForm.password
       )
+const response = await fetch(
+  "http://127.0.0.1:8000/login",
+  {
+    method: "POST",
 
-      const response = await fetch(
-        "http://127.0.0.1:8000/login",
-        {
-          method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
 
-          headers: {
-            "Content-Type":
-              "application/x-www-form-urlencoded",
-          },
-
-          body: body.toString(),
-        }
-      )
+    body: JSON.stringify({
+      email: loginForm.email,
+      password: loginForm.password,
+    }),
+  }
+)
 
       const data = await response.json()
 
@@ -669,7 +673,38 @@ function App() {
 
     }
   }
+const fetchPublicIncidents = async () => {
+  if (!token) {
+    return
+  }
 
+  try {
+    const response = await fetch(
+      "http://127.0.0.1:8000/incidents/public",
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    )
+
+    if (!response.ok) {
+      throw new Error("Failed to load campus incidents")
+    }
+
+    const data = await response.json()
+
+    const list = Array.isArray(data)
+      ? data
+      : Array.isArray(data.incidents)
+        ? data.incidents
+        : []
+
+    setPublicIncidents(list)
+  } catch (err) {
+    console.error(err)
+  }
+}
 
   // ==========================================================
   // ADMIN: FETCH DATA
@@ -1032,17 +1067,19 @@ function App() {
     try {
 
       const response =
-        await fetch(
-          `http://127.0.0.1:8000/staff/incidents/${incidentId}/status?status=${newStatus}`,
-          {
-            method: "PATCH",
-
-            headers: {
-              Authorization:
-                `Bearer ${token}`,
-            },
-          }
-        )
+  await fetch(
+    `http://127.0.0.1:8000/staff/incidents/${incidentId}/status`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        status: newStatus,
+      }),
+    }
+  )
 
 
       const data =
@@ -1108,6 +1145,7 @@ function App() {
     ) {
 
       fetchIncidents()
+      fetchPublicIncidents()
 
     }
 
@@ -1479,21 +1517,24 @@ function App() {
     setError("")
     setMessage("")
 
-    try {
 
-      const response =
-        await fetch(
-          `http://127.0.0.1:8000/admin/incidents/${incidentId}/status?status=${newStatus}`,
-          {
-            method: "PATCH",
+      try {
+  const response =
+    await fetch(
+      `http://127.0.0.1:8000/admin/incidents/${incidentId}/status`,
+      {
+        method: "PATCH",
 
-            headers: {
-              Authorization:
-                `Bearer ${token}`,
-            },
-          }
-        )
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
 
+        body: JSON.stringify({
+          status: newStatus,
+        }),
+      }
+    )
 
       const data =
         await response.json()
@@ -1544,18 +1585,22 @@ function App() {
 
     try {
 
-      const response =
-        await fetch(
-          `http://127.0.0.1:8000/admin/incidents/${incidentId}/assign?staff_id=${staffId}`,
-          {
-            method: "PATCH",
+     const response =
+  await fetch(
+    `http://127.0.0.1:8000/admin/incidents/${incidentId}/assign`,
+    {
+      method: "PATCH",
 
-            headers: {
-              Authorization:
-                `Bearer ${token}`,
-            },
-          }
-        )
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+
+      body: JSON.stringify({
+        staff_id: Number(staffId),
+      }),
+    }
+  )
 
 
       const data =
@@ -1593,14 +1638,23 @@ function App() {
   // ADMIN FILTER
   // ==========================================================
 
-  const filteredAdminIncidents =
-    adminFilter === "all"
-      ? adminIncidents
-      : adminIncidents.filter(
-          (incident) =>
-            incident.status ===
-            adminFilter
-        )
+  const filteredAdminIncidents = adminIncidents.filter((incident) => {
+    const matchesStatus =
+        adminFilter === "all" ||
+        incident.status === adminFilter
+
+    const search = adminSearch.trim().toLowerCase()
+
+    const matchesSearch =
+        search === "" ||
+        String(incident.id).includes(search) ||
+        incident.title?.toLowerCase().includes(search) ||
+        incident.description?.toLowerCase().includes(search) ||
+        incident.location?.toLowerCase().includes(search) ||
+        incident.category?.toLowerCase().includes(search)
+
+    return matchesStatus && matchesSearch
+})
 
 
   // ==========================================================
@@ -2036,6 +2090,13 @@ function App() {
 
               </div>
 
+              <input
+                  type="text"
+                  value={adminSearch}
+                  onChange={(e) => setAdminSearch(e.target.value)}
+                  placeholder="Search incidents..."
+                  className="w-full rounded-2xl border border-[#D8D2C7] bg-[#FFFDF8] px-4 py-3 text-sm outline-none transition focus:border-[#8FA58B] dark:border-[#3A4C40] dark:bg-[#202D25]"
+              />
 
               <select
                 value={adminFilter}
@@ -2154,6 +2215,11 @@ function App() {
                               </span>
                             </span>
 
+                            <p className="mt-1 text-xs text-gray-500">
+                                Staff:{" "}
+                                {incident.assigned_to?.name || "Not assigned"}
+                              </p>
+
                             <span>
                               Reported:{" "}
                               {formatDate(
@@ -2223,7 +2289,7 @@ function App() {
 
 
                           <select
-                            defaultValue=""
+                            defaultValue={incident.assigned_to?.id || ""}
                             onChange={(e) =>
                               assignStaff(
                                 incident.id,
@@ -3394,6 +3460,154 @@ function App() {
 
         </section>
 
+        <section className="mt-10">
+  <div className="mb-6">
+    <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#71856F]">
+      Campus updates
+    </p>
+
+    <h3 className="mt-2 text-3xl font-semibold">
+      Campus incidents
+    </h3>
+
+    <p className="mt-2 max-w-2xl text-sm leading-6 text-[#777A72] dark:text-[#AEB9B1]">
+      Stay informed about incidents currently reported across campus.
+    </p>
+  </div>
+
+  {publicIncidents.length === 0 ? (
+    <div className="rounded-[28px] border border-[#E5DED2] bg-[#FFFDF8] p-10 text-center dark:border-[#304238] dark:bg-[#202D25]">
+      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#E7EBDD] text-2xl dark:bg-[#304238]">
+        ✓
+      </div>
+
+      <h4 className="mt-4 text-lg font-semibold">
+        No campus incidents
+      </h4>
+
+      <p className="mt-2 text-sm text-[#777A72] dark:text-[#AEB9B1]">
+        There are currently no active campus incidents to display.
+      </p>
+    </div>
+  ) : (
+    <div className="space-y-4">
+      {publicIncidents.map((incident) => (
+        <div
+          key={incident.id}
+          className="rounded-[28px] border border-[#E5DED2] bg-[#FFFDF8] p-6 shadow-sm dark:border-[#304238] dark:bg-[#202D25]"
+        >
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-full bg-[#DFE8DC] px-3 py-1.5 text-xs font-medium capitalize text-[#52664D] dark:bg-[#304036] dark:text-[#B8C9B4]">
+                  {formatPopupStatus(incident.status)}
+                </span>
+
+                <span className="rounded-full bg-[#E9E4D5] px-3 py-1.5 text-xs font-medium capitalize text-[#675E4B] dark:bg-[#3B392F] dark:text-[#D8CFB5]">
+                  {incident.priority}
+                </span>
+              </div>
+
+              <h4 className="mt-4 text-xl font-semibold">
+                {incident.title}
+              </h4>
+              <div className="mt-4 rounded-2xl border border-[#E5DED2] bg-[#F7F3EC] p-4 dark:border-[#304238] dark:bg-[#18231D]">
+  <p className="mb-3 text-xs font-medium uppercase tracking-[0.15em] text-[#71856F]">
+    Progress
+  </p>
+
+  <div className="flex items-center justify-between gap-1">
+    {[
+      "reported",
+      "assigned",
+      "in_progress",
+      "resolved",
+      "closed",
+    ].map((step, index, steps) => {
+      const currentIndex = steps.indexOf(incident.status)
+      const isCompleted = index <= currentIndex
+      const isCurrent = index === currentIndex
+
+      return (
+        <div
+          key={step}
+          className="flex flex-1 items-center"
+        >
+          <div className="flex flex-col items-center">
+            <div
+              className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${
+                isCurrent
+                  ? "bg-[#71856F] text-white"
+                  : isCompleted
+                    ? "bg-[#A8B9A2] text-white"
+                    : "bg-[#DDD8CD] text-[#777A72] dark:bg-[#344139] dark:text-[#AEB9B1]"
+              }`}
+            >
+              {index + 1}
+            </div>
+
+            <span className="mt-2 text-center text-[10px] font-medium capitalize text-[#777A72] dark:text-[#AEB9B1]">
+              {formatPopupStatus(step)}
+            </span>
+          </div>
+
+          {index < steps.length - 1 && (
+            <div
+              className={`mx-1 h-0.5 flex-1 ${
+                index < currentIndex
+                  ? "bg-[#A8B9A2]"
+                  : "bg-[#DDD8CD] dark:bg-[#344139]"
+              }`}
+            />
+          )}
+        </div>
+      )
+    })}
+  </div>
+</div>
+
+              <p className="mt-2 text-sm leading-6 text-[#777A72] dark:text-[#AEB9B1]">
+                {incident.description}
+              </p>
+
+              <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+                <span>
+                  📍 {incident.location}
+                </span>
+
+                <span>
+                  Category:{" "}
+                  <span className="capitalize">
+                    {incident.category}
+                  </span>
+                </span>
+
+                <span>
+                  Reported by:{" "}
+                  {incident.reported_by?.name || "Unknown"}
+                </span>
+              </div>
+
+              {incident.assigned_to && (
+                <p className="mt-3 text-xs text-[#777A72] dark:text-[#AEB9B1]">
+                  Being handled by {incident.assigned_to.name}
+                </p>
+              )}
+              <div className="mt-5">
+  <button
+    onClick={() => openProgress(incident)}
+    className="w-full rounded-2xl border border-[#C8D4C3] bg-[#EDF2E9] px-4 py-3 text-sm font-medium text-[#52664D] transition hover:bg-[#E1E9DD] dark:border-[#3A4C40] dark:bg-[#26382E] dark:text-[#B8C9B4] dark:hover:bg-[#304238]"
+  >
+    View progress
+  </button>
+</div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+</section>
 
         <section className="mt-10">
 
