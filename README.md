@@ -113,6 +113,7 @@ Role-based access control is implemented using JWT authentication.
 
 ## Project Structure
 
+```text
 CampusCare/
 ├── backend/
 │   ├── app/
@@ -128,12 +129,15 @@ CampusCare/
 │   ├── alembic/
 │   │   └── versions/
 │   └── requirements.txt
+│
 ├── frontend/
 │   ├── src/
 │   │   ├── App.jsx
-│   │   └── index.css
+│   │   ├── index.css
+│   │   └── main.jsx
 │   ├── package.json
 │   └── vite.config.js
+│
 ├── docker-compose.yml
 ├── .env
 ├── .gitignore
