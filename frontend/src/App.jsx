@@ -2172,7 +2172,43 @@ const fetchPublicIncidents = async () => {
     )}
   </div>
 </section>
+<section className="mt-10">
+  <div className="mb-6">
+    <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#71856F]">
+      Overview
+    </p>
 
+    <h3 className="mt-2 text-2xl font-semibold">
+      Incidents by priority
+    </h3>
+
+    <p className="mt-2 text-sm text-[#777A72] dark:text-[#AEB9B1]">
+      Distribution of incidents based on their current priority level.
+    </p>
+  </div>
+
+  <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+    {[
+      ["Critical", "critical"],
+      ["High", "high"],
+      ["Medium", "medium"],
+      ["Low", "low"],
+    ].map(([label, key]) => (
+      <div
+        key={key}
+        className="rounded-[24px] border border-[#E5DED2] bg-[#FFFDFA] p-5 dark:border-[#304238] dark:bg-[#202D25]"
+      >
+        <p className="text-sm text-[#777A72] dark:text-[#AEB9B1]">
+          {label}
+        </p>
+
+        <p className="mt-3 text-3xl font-semibold">
+          {adminStats?.by_priority?.[key] ?? 0}
+        </p>
+      </div>
+    ))}
+  </div>
+</section>
           <section className="mt-10">
 
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">

@@ -811,6 +811,14 @@ def get_admin_stats(
             Incident.priority == "high"
         ).count()
 
+        medium = session.query(Incident).filter(
+            Incident.priority == "medium"
+        ).count()
+
+        low = session.query(Incident).filter(
+            Incident.priority == "low"
+        ).count()
+
         categories = [
             "safety",
             "electrical",
@@ -843,9 +851,11 @@ def get_admin_stats(
                 "closed": closed
             },
 
-            "by_priority": {
+                "by_priority": {
                 "critical": critical,
-                "high": high
+                "high": high,
+                "medium": medium,
+                "low": low
             },
 
             "by_category": by_category
