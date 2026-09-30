@@ -860,6 +860,56 @@ def get_admin_stats(
 
             "by_category": by_category
         }
+@app.get("/admin/staff/workload")
+def get_staff_workload(
+    current_user: dict = Depends(require_role("admin"))
+):
+    with Session(engine) as session:
+
+        staff_members = (
+            session.query(User)
+            .filter(User.role == "staff")
+            .order_by(User.name)
+            .all()
+        )
+
+        workload = []
+
+        for staff in staff_members:
+            assigned = session.query(Incident).filter(
+                Incident.assigned_to == staff.id
+            ).count()
+
+            active = session.query(Incident).filter(
+                Incident.assigned_to == staff.id,
+                Incident.status.in_([
+                    "assigned",
+                    "in_progress"
+                ])
+            ).count()
+
+            resolved = session.query(Incident).filter(
+                Incident.assigned_to == staff.id,
+                Incident.status.in_([
+                    "resolved",
+                    "closed"
+                ])
+            ).count()
+
+            workload.append({
+                "staff_id": staff.id,
+                "name": staff.name,
+                "email": staff.email,
+                "assigned_incidents": assigned,
+                "active_incidents": active,
+                "resolved_incidents": resolved
+            })
+
+        return {
+            "staff_count": len(workload),
+            "staff": workload
+        }
+
 @app.get("/admin/stats/monthly")
 def get_monthly_incident_stats(
     current_user: dict = Depends(require_role("admin"))
@@ -891,6 +941,8 @@ def get_monthly_incident_stats(
                 for month, count in monthly_counts.items()
             ]
         }
+
+
 # ============================================================
 # INCIDENT STATUS HISTORY
 # ============================================================

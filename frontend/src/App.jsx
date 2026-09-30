@@ -351,6 +351,9 @@ function App() {
 
   const [adminStats, setAdminStats] =
     useState(null)
+  
+  const [staffWorkload, setStaffWorkload] =
+  useState([])
 
   const [monthlyStats, setMonthlyStats] = useState([])
 
@@ -707,123 +710,125 @@ const fetchPublicIncidents = async () => {
     console.error(err)
   }
 }
+// ==========================================================
+// ADMIN: FETCH DATA
+// ==========================================================
 
-  // ==========================================================
-  // ADMIN: FETCH DATA
-  // ==========================================================
-
-  const fetchAdminData = async () => {
-    if (!token) {
-      return
-    }
-
-    setLoadingAdmin(true)
-
-    try {
-
-      const headers = {
-        Authorization:
-          `Bearer ${token}`,
-      }
-
-
-      const [
-        incidentsResponse,
-        statsResponse,
-        monthlyResponse,
-        staffResponse,
-      ] = await Promise.all([
-
-        fetch(
-          "http://127.0.0.1:8000/admin/incidents",
-          {
-            headers,
-          }
-        ),
-
-        fetch(
-          "http://127.0.0.1:8000/admin/stats",
-          {
-            headers,
-          }
-        ),
-
-        fetch(
-          "http://127.0.0.1:8000/admin/stats/monthly",
-          {
-            headers,
-          }
-        ),
-
-        fetch(
-          "http://127.0.0.1:8000/admin/staff",
-          {
-            headers,
-          }
-        ),
-
-      ])
-
-
-      if (incidentsResponse.ok) {
-
-        const data =
-          await incidentsResponse.json()
-
-        const list =
-          Array.isArray(data)
-            ? data
-            : Array.isArray(
-                data.incidents
-              )
-              ? data.incidents
-              : []
-
-        setAdminIncidents(list)
-      }
-
-
-      if (statsResponse.ok) {
-
-        const stats =
-          await statsResponse.json()
-
-        setAdminStats(stats)
-      }
-
-      if (monthlyResponse.ok) {
-  const monthly = await monthlyResponse.json()
-
-  setMonthlyStats(monthly.monthly_incidents ?? [])
-}
-
-      if (staffResponse.ok) {
-
-        const staff =
-          await staffResponse.json()
-
-        setStaffMembers(
-          Array.isArray(staff)
-            ? staff
-            : []
-        )
-      }
-
-    } catch (err) {
-
-      console.error(
-        "Admin data error:",
-        err
-      )
-
-    } finally {
-
-      setLoadingAdmin(false)
-
-    }
+const fetchAdminData = async () => {
+  if (!token) {
+    return
   }
 
+  setLoadingAdmin(true)
 
+  try {
+    const headers = {
+      Authorization: `Bearer ${token}`,
+    }
+
+    const [
+      incidentsResponse,
+      workloadResponse,
+      statsResponse,
+      monthlyResponse,
+      staffResponse,
+    ] = await Promise.all([
+      fetch(
+        "http://127.0.0.1:8000/admin/incidents",
+        {
+          headers,
+        }
+      ),
+
+      fetch(
+        "http://127.0.0.1:8000/admin/staff/workload",
+        {
+          headers,
+        }
+      ),
+
+      fetch(
+        "http://127.0.0.1:8000/admin/stats",
+        {
+          headers,
+        }
+      ),
+
+      fetch(
+        "http://127.0.0.1:8000/admin/stats/monthly",
+        {
+          headers,
+        }
+      ),
+
+      fetch(
+        "http://127.0.0.1:8000/admin/staff",
+        {
+          headers,
+        }
+      ),
+    ])
+
+    if (incidentsResponse.ok) {
+      const data = await incidentsResponse.json()
+
+      const list =
+        Array.isArray(data)
+          ? data
+          : Array.isArray(data.incidents)
+            ? data.incidents
+            : []
+
+      setAdminIncidents(list)
+    }
+
+    if (workloadResponse.ok) {
+      const workload =
+        await workloadResponse.json()
+
+      setStaffWorkload(
+        Array.isArray(workload.staff)
+          ? workload.staff
+          : []
+      )
+    }
+
+    if (statsResponse.ok) {
+      const stats =
+        await statsResponse.json()
+
+      setAdminStats(stats)
+    }
+
+    if (monthlyResponse.ok) {
+      const monthly =
+        await monthlyResponse.json()
+
+      setMonthlyStats(
+        monthly.monthly_incidents ?? []
+      )
+    }
+
+    if (staffResponse.ok) {
+      const staff =
+        await staffResponse.json()
+
+      setStaffMembers(
+        Array.isArray(staff)
+          ? staff
+          : []
+      )
+    }
+
+  } catch (err) {
+    console.error(
+      "Admin data error:",
+      err
+    )
+  } finally {
+    setLoadingAdmin(false)
+  }
+}
   // ==========================================================
   // STAFF: FETCH INCIDENTS
   // ==========================================================
@@ -2172,6 +2177,88 @@ const fetchPublicIncidents = async () => {
     )}
   </div>
 </section>
+
+<section className="mt-10">
+  <div className="mb-6">
+    <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#71856F]">
+      Management
+    </p>
+
+    <h3 className="mt-2 text-2xl font-semibold">
+      Staff workload
+    </h3>
+
+    <p className="mt-2 text-sm text-[#777A72] dark:text-[#AEB9B1]">
+      Current incident workload and resolution activity for campus staff.
+    </p>
+  </div>
+
+  <div className="grid gap-5 md:grid-cols-2">
+    {staffWorkload.length === 0 ? (
+      <div className="rounded-[24px] border border-[#E5DED2] bg-[#FFFDF8] p-6 dark:border-[#304238] dark:bg-[#202D25]">
+        <p className="text-sm text-[#777A72] dark:text-[#AEB9B1]">
+          No staff workload data available.
+        </p>
+      </div>
+    ) : (
+      staffWorkload.map((staff) => (
+        <div
+          key={staff.staff_id}
+          className="rounded-[24px] border border-[#E5DED2] bg-[#FFFDF8] p-6 dark:border-[#304238] dark:bg-[#202D25]"
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h4 className="text-lg font-semibold">
+                {staff.name}
+              </h4>
+
+              <p className="mt-1 text-sm text-[#777A72] dark:text-[#AEB9B1]">
+                {staff.email}
+              </p>
+            </div>
+
+            <div className="rounded-full bg-[#E7EFE5] px-3 py-1 text-xs font-medium text-[#587055] dark:bg-[#304238] dark:text-[#B9C9BC]">
+              {staff.active_incidents} active
+            </div>
+          </div>
+
+          <div className="mt-6 grid grid-cols-3 gap-3">
+            <div className="rounded-[18px] bg-[#F3EFE7] p-4 dark:bg-[#29382F]">
+              <p className="text-xs text-[#777A72] dark:text-[#AEB9B1]">
+                Assigned
+              </p>
+
+              <p className="mt-2 text-2xl font-semibold">
+                {staff.assigned_incidents}
+              </p>
+            </div>
+
+            <div className="rounded-[18px] bg-[#F3EFE7] p-4 dark:bg-[#29382F]">
+              <p className="text-xs text-[#777A72] dark:text-[#AEB9B1]">
+                Active
+              </p>
+
+              <p className="mt-2 text-2xl font-semibold">
+                {staff.active_incidents}
+              </p>
+            </div>
+
+            <div className="rounded-[18px] bg-[#F3EFE7] p-4 dark:bg-[#29382F]">
+              <p className="text-xs text-[#777A72] dark:text-[#AEB9B1]">
+                Resolved
+              </p>
+
+              <p className="mt-2 text-2xl font-semibold">
+                {staff.resolved_incidents}
+              </p>
+            </div>
+          </div>
+        </div>
+      ))
+    )}
+  </div>
+</section>
+
 <section className="mt-10">
   <div className="mb-6">
     <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#71856F]">
