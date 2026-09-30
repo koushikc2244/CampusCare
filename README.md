@@ -143,7 +143,6 @@ CampusCare/
 ├── .gitignore
 └── README.md
 
----
 
 ## Prerequisites
 
